@@ -55,6 +55,8 @@ app.post('/pullrequest/', async function(req, res) {
             body: JSON.stringify(message),
             headers: { 'Content-Type': 'application/json' }
         });
+    } else {
+        res.send('That label didnt include review: ready');
     }
 });
 
