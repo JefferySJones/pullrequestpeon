@@ -22,42 +22,40 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     const pull_request = body && body.pull_request
-    const label = pull_request && pull_request.labels && pull_request.labels.reduce((accumulator, label) => {
-        if (label.name.includes('Review: Ready')) {
-            return label;
-        }
-    }, {});
-    
+    const label = pull_request && pull_request.label && pull_request.label;
+        
     if (!label || !label.name) {
         res.send('No label');
         return;
     }
-
-    const message = {
-        parse: 'full',
-        attachments: [
-            {
-                fallback: '@prps - Review requested from ' + pull_request.user.login,
-                pretext: '@prps - Review requested from ' + pull_request.user.login,
-                color: '#' + label.color,
-                fields: [
-                    {
-                        title: pull_request.title,
-                        value: pull_request.html_url,
-                        short: false
-                    }
-                ]
-            }
-        ]
-    };
     
-    res.sendStatus(200);
+    if (label.name.includes('Review: Ready')) {
+        const message = {
+            parse: 'full',
+            attachments: [
+                {
+                    fallback: '@prps - Review requested from ' + pull_request.user.login,
+                    pretext: '@prps - Review requested from ' + pull_request.user.login,
+                    color: '#' + label.color,
+                    fields: [
+                        {
+                            title: pull_request.title,
+                            value: pull_request.html_url,
+                            short: false
+                        }
+                    ]
+                }
+            ]
+        };
+        
+        res.sendStatus(200);
 
-    await fetch(process.env.SLACK_WEBHOOK, {
-        method: 'POST',
-        body: JSON.stringify(message),
-        headers: { 'Content-Type': 'application/json' }
-    });
+        await fetch(process.env.SLACK_WEBHOOK, {
+            method: 'POST',
+            body: JSON.stringify(message),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 });
 
 app.listen(process.env.PORT || 4000, function(){
