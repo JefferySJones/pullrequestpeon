@@ -1,0 +1,70 @@
+// server.js
+
+const express = require('express');
+const app = express();
+const fetch = require('node-fetch');
+const path = require('path');
+
+const dotenv = require('dotenv');
+dotenv.config();
+
+// Parse JSON bodies (as sent by API clients)
+app.use(express.json());
+
+app.get('/', function(req, res) {
+    res.send('Healthy');
+})
+app.post('/pullrequest/', async function(req, res) {
+    let body = req.body;
+    if (body && body.action !== 'labeled') {
+        res.sendStatus(403);
+        return;
+    }
+
+    const pull_request = body && body.pull_request
+    const label = pull_request && pull_request.labels && pull_request.labels.reduce((accumulator, label) => {
+        if (label.name.includes('Review: Ready')) {
+            accumulator = label;
+        }
+    }, {});
+    
+    let reviewReady;
+    if (!label || !label.name) {
+        res.sendStatus(403);
+        return;
+    }
+
+    const message = {
+        parse: 'full',
+        attachments: [
+            {
+                fallback: '@prps - Review requested from ' + pull_request.user.login,
+                pretext: '@prps - Review requested from ' + pull_request.user.login,
+                color: '#' + label.color,
+                fields: [
+                    {
+                        title: pull_request.title,
+                        value: pull_request.html_url,
+                        short: false
+                    }
+                ]
+            }
+        ]
+    };
+
+    if (reviewReady) {
+        res.sendStatus(200);
+
+        await fetch(process.env.SLACK_TEST_WEBHOOK, {
+            method: 'POST',
+            body: JSON.stringify(message),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } else {
+        res.sendStatus(403);
+    }
+});
+
+app.listen(process.env.PORT || 4000, function(){
+    console.log('Your node js server is running');
+});
