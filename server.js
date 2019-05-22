@@ -22,7 +22,7 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     const pull_request = body && body.pull_request
-    const label = pull_request && label;
+    const label = pull_request && body.label;
         
     if (!label || !label.name) {
         res.send('No label');
