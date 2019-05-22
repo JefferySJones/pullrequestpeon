@@ -55,7 +55,7 @@ app.post('/pullrequest/', async function(req, res) {
     if (reviewReady) {
         res.sendStatus(200);
 
-        await fetch(process.env.SLACK_TEST_WEBHOOK, {
+        await fetch(process.env.SLACK_WEBHOOK, {
             method: 'POST',
             body: JSON.stringify(message),
             headers: { 'Content-Type': 'application/json' }
