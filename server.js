@@ -17,20 +17,19 @@ app.get('/', function(req, res) {
 app.post('/pullrequest/', async function(req, res) {
     let body = req.body;
     if (body && body.action !== 'labeled') {
-        res.sendStatus(403);
+        res.send('Action != labeled, or no body');
         return;
     }
 
     const pull_request = body && body.pull_request
     const label = pull_request && pull_request.labels && pull_request.labels.reduce((accumulator, label) => {
         if (label.name.includes('Review: Ready')) {
-            accumulator = label;
+            return label;
         }
     }, {});
     
-    let reviewReady;
     if (!label || !label.name) {
-        res.sendStatus(403);
+        res.send('No label');
         return;
     }
 
@@ -51,18 +50,14 @@ app.post('/pullrequest/', async function(req, res) {
             }
         ]
     };
+    
+    res.sendStatus(200);
 
-    if (reviewReady) {
-        res.sendStatus(200);
-
-        await fetch(process.env.SLACK_WEBHOOK, {
-            method: 'POST',
-            body: JSON.stringify(message),
-            headers: { 'Content-Type': 'application/json' }
-        });
-    } else {
-        res.sendStatus(403);
-    }
+    await fetch(process.env.SLACK_WEBHOOK, {
+        method: 'POST',
+        body: JSON.stringify(message),
+        headers: { 'Content-Type': 'application/json' }
+    });
 });
 
 app.listen(process.env.PORT || 4000, function(){
