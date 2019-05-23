@@ -20,7 +20,6 @@ app.get('/', function(req, res) {
     res.send('Healthy');
 });
 
-
 function modifyMessage (newMessage, optsToRemove = [], appendage) {
     let attachment = get(newMessage, 'attachments[0]');
     attachment.text = attachment.text + appendage;
@@ -43,13 +42,16 @@ function modifyMessage (newMessage, optsToRemove = [], appendage) {
 
     return newMessage;
 }
-app.post('/action/', async function(req, res) {
-    const payload = req.body.payload;
 
-    let parsed;
-    if (payload) {
-        parsed = JSON.parse(payload);
+app.post('/action/', async function(req, res) {
+    const payload = get(req, 'body.payload');
+
+    if (!payload) {
+        res.sendStatus(500);
+        return;
     }
+
+    const parsed = JSON.parse(payload);
     if (!parsed) { 
         res.sendStatus(403); 
         return; 
@@ -77,22 +79,17 @@ app.post('/action/', async function(req, res) {
     }
 });
 
-app.post('/pullrequest/', async function(req, res) {
-    const body = req.body;
-    if (body && body.action !== 'labeled') {
-        res.send('Action != labeled, or no body');
-        return;
-    }
-
-    const pull_request = body && body.pull_request
-    const label = pull_request && body.label;
-        
+function processLabeled (body) {
+    const pull_request = get(body, 'pull_request');
+    const label = get(body, 'label');
+    const labelName = get(label, 'name');
+    
     if (!label || !label.name) {
         res.send('No label');
         return;
     }
-    
-    if (label.name.includes('Review: Ready')) {
+
+    if (labelName.includes('Review: Ready')) {
         const message = {
             "parse": "full",
             "text": '@prps - Review requested from ' + pull_request.user.login,
@@ -138,8 +135,21 @@ app.post('/pullrequest/', async function(req, res) {
             headers: { 'Content-Type': 'application/json' }
         });
     } else {
-        res.send(label.name);
+        res.send('"' + label.name + '" is not supported');
         return;
+    }
+}
+
+app.post('/pullrequest/', async function(req, res) {
+    const body = get(req, 'body');
+    const action = get(body, 'action');
+    if (action !== 'labeled') {
+        res.send('Action is not labeled or there is no body');
+        return;
+    }
+
+    if (action == 'labeled') {
+        processLabeled(body);
     }
 });
 
