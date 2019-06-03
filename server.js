@@ -6,9 +6,17 @@ const fetch = require('node-fetch');
 const path = require('path');
 const get = require('lodash/get');
 const cloneDeep = require('lodash/cloneDeep');
+const { Client } = require('pg');
 
 const dotenv = require('dotenv');
 dotenv.config();
+
+const connectionString = process.env.DATABASE_URL;
+const pgclient = new Client({
+    connectionString,
+    ssl: true,
+});
+pgclient.connect();
 
 // Parse JSON bodies
 app.use(express.json());
