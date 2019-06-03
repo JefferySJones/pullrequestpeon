@@ -79,23 +79,23 @@ app.post('/action/', async function(req, res) {
     }
 });
 
-async function processLabeled (body) {
+async function processLabeled (body, res) {
     const pull_request = get(body, 'pull_request');
     const label = get(body, 'label');
     const labelName = get(label, 'name');
 
     // Parse repo out from URL
-    const repo = new RegExp("[^\/]+(?=\/pull)").exec(pull_request.html_url);
+    const repo = get(new RegExp("[^\/]+(?=\/pull\/)").exec(pull_request.html_url), '[0]');
 
     // Set slack notification tag based on repo
     const pr_notify_tag = (function(repo) {
         switch(repo) {
-            case 'pullrequestpeon':
+            case 'chef':
                 return '@devops';
             default:
                 return '@prps';
         }
-    });
+    })(repo);
 
     if (!label || !label.name) {
         res.send('No label');
@@ -162,7 +162,7 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     if (action == 'labeled') {
-        processLabeled(body);
+        processLabeled(body, res);
     }
 });
 
