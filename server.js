@@ -52,14 +52,14 @@ app.post('/action/', async function(req, res) {
     }
 
     const parsed = JSON.parse(payload);
-    if (!parsed) { 
-        res.sendStatus(403); 
-        return; 
+    if (!parsed) {
+        res.sendStatus(403);
+        return;
     }
 
     const originalMessage = get(parsed, 'original_message');
     const action = get(parsed, 'actions[0].selected_options[0].value');
-    
+
     if (action && originalMessage) {
         let newMessage = cloneDeep(originalMessage);
 
@@ -79,11 +79,24 @@ app.post('/action/', async function(req, res) {
     }
 });
 
-function processLabeled (body) {
+async function processLabeled (body, res) {
     const pull_request = get(body, 'pull_request');
     const label = get(body, 'label');
     const labelName = get(label, 'name');
-    
+
+    // Parse repo out from URL
+    const repo = get(new RegExp("[^\/]+(?=\/pull\/)").exec(pull_request.html_url), '[0]');
+
+    // Set slack notification tag based on repo
+    const pr_notify_tag = (function(repo) {
+        switch(repo) {
+            case 'chef':
+                return '@devops';
+            default:
+                return '@prps';
+        }
+    })(repo);
+
     if (!label || !label.name) {
         res.send('No label');
         return;
@@ -92,7 +105,7 @@ function processLabeled (body) {
     if (labelName.includes('Review: Ready')) {
         const message = {
             "parse": "full",
-            "text": '@prps - Review requested from ' + pull_request.user.login,
+            "text": pr_notify_tag + ' - Review requested from ' + pull_request.user.login,
             "response_type": "in_channel",
             "attachments": [
                 {
@@ -126,7 +139,7 @@ function processLabeled (body) {
                 }
             ]
         };
-        
+
         res.sendStatus(200);
 
         await fetch(process.env.SLACK_WEBHOOK, {
@@ -149,7 +162,7 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     if (action == 'labeled') {
-        processLabeled(body);
+        processLabeled(body, res);
     }
 });
 
