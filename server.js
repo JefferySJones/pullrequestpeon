@@ -150,11 +150,13 @@ async function processLabeled (body, res) {
 
         res.sendStatus(200);
 
-        await fetch(process.env.SLACK_WEBHOOK, {
+        const slack_message = await fetch(process.env.SLACK_TEST_WEBHOOK, {
             method: 'POST',
             body: JSON.stringify(message),
             headers: { 'Content-Type': 'application/json' }
         });
+
+        console.log(slack_message);
     } else {
         res.send('"' + label.name + '" is not supported');
         return;
@@ -164,13 +166,75 @@ async function processLabeled (body, res) {
 app.post('/pullrequest/', async function(req, res) {
     const body = get(req, 'body');
     const action = get(body, 'action');
+
+    const branch = get(body, 'pull_request.head.ref');
+    const pull_request = get(body, 'pull_request');
+
+    if (process.env.DEBUG === 'true' && branch) {
+        console.log('branch ', branch);
+    }
+
     if (action !== 'labeled') {
-        res.send('Action is not labeled or there is no body');
-        return;
+        // res.send('Action is not labeled or there is no body');
+        // return;
     }
 
     if (action == 'labeled') {
         processLabeled(body, res);
+    }
+
+    if (action == 'review_requested') {
+        const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
+            return reviewer.login
+        });
+        
+        const message = {
+            "parse": "full",
+            "text": pull_request.user.login + ' is requesting a review from:' + '\n' +
+                '    ' + reviewers.join(',') + '\n' +
+                'On branch: `' + branch + '`',
+            "response_type": "in_channel",
+            "attachments": [
+                {
+                    "fallback": pull_request.html_url,
+                    "title": pull_request.title,
+                    "text": pull_request.html_url,
+                    "color": '#' + '2BABE2',
+                    "attachment_type": "default"
+                }
+            ]
+        };
+        
+        const params = {
+            text: message.text,
+            attachments: JSON.stringify(message.attachments),
+            parse: message.parse,
+            response_type: message.response_type,
+            token: process.env.BOT_TOKEN,
+            channel: process.env.CHANNEL
+        };
+
+        const query =  Object.keys(params)
+            .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+            .join('&');
+
+        const slack_message = await fetch('https://slack.com/api/chat.postMessage?' + query, {
+            method: 'POST'
+        }).then((res) => res.json())
+
+        const timestamp = get(slack_message, 'ts')
+
+        const text = 'INSERT INTO pulls_messages(message_ts, branch) VALUES($1, $2) RETURNING *';
+        const values = [timestamp, branch];
+        
+        pgclient.query(text, values)
+            .then(res => {
+                console.log(res.rows[0])
+            })
+            .catch(e => console.error(e.stack));
+
+        res.send({ branch, timestamp });
+        return;
     }
 });
 
