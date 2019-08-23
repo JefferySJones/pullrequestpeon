@@ -2,7 +2,6 @@
 const express = require('express');
 const app = express();
 const fetch = require('node-fetch');
-const path = require('path');
 const get = require('lodash/get');
 const cloneDeep = require('lodash/cloneDeep');
 const { Client } = require('pg');
@@ -32,7 +31,6 @@ app.use(express.urlencoded({extended: true}));
 /**
  * GET Routes
  */
-
 app.get('/', function(req, res) {
     res.send('Healthy');
 });
