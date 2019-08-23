@@ -79,7 +79,6 @@ app.post('/pullrequest/', async function(req, res) {
     const action = get(body, 'action');
 
     const branch = get(body, 'pull_request.head.ref');
-    const pull_request = get(body, 'pull_request');
 
     if (process.env.DEBUG === 'true' && branch) {
         console.log('branch ', branch);
@@ -92,51 +91,11 @@ app.post('/pullrequest/', async function(req, res) {
 
     if (action == 'labeled') {
         processLabeled(body, res);
+        return;
     }
 
     if (action == 'review_requested') {
-        const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
-            return reviewer && reviewer.login
-        });
-        
-        const message = {
-            "parse": "full",
-            "text": pull_request.user.login + ' is requesting a review from:' + '\n' +
-                '    ' + reviewers.join(',') + '\n' +
-                'On branch: `' + branch + '`',
-            "response_type": "in_channel",
-            "attachments": [
-                {
-                    "fallback": pull_request.html_url,
-                    "title": pull_request.title,
-                    "text": pull_request.html_url,
-                    "color": '#' + '2BABE2',
-                    "attachment_type": "default"
-                }
-            ]
-        };
-        
-        const params = {
-            text: message.text,
-            attachments: JSON.stringify(message.attachments),
-            parse: message.parse,
-            response_type: message.response_type,
-            token: process.env.BOT_TOKEN,
-            channel: process.env.CHANNEL
-        };
-
-        const query =  Object.keys(params)
-            .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
-            .join('&');
-
-        const slack_message = await fetch('https://slack.com/api/chat.postMessage?' + query, {
-            method: 'POST'
-        }).then((res) => res.json())
-        const timestamp = get(slack_message, 'ts');
-        
-        savePullsMessages(branch, timestamp);
-
-        res.send({ branch, timestamp });
+        processReviewRequest(body, res);
         return;
     }
 });
@@ -167,7 +126,7 @@ function modifyMessage (newMessage, optsToRemove = [], appendage) {
     return newMessage;
 }
 
-function savePullsMessages (timestamp, branch) {
+function savePullsMessages (branch, timestamp) {
     const text = 'INSERT INTO pulls_messages(message_ts, branch) VALUES($1, $2) RETURNING *';
     const values = [timestamp, branch];
     
@@ -252,4 +211,51 @@ async function processLabeled (body, res) {
         res.send('"' + label.name + '" is not supported');
         return;
     }
+}
+
+async function processReviewRequest (body, res) {
+    const pull_request = get(body, 'pull_request');
+    const branch = get(body, 'pull_request.head.ref');
+    const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
+        return reviewer && reviewer.login
+    });
+    
+    const message = {
+        "parse": "full",
+        "text": pull_request.user.login + ' is requesting a review from:' + '\n' +
+            '    ' + reviewers.join(',') + '\n' +
+            'On branch: `' + branch + '`',
+        "response_type": "in_channel",
+        "attachments": [
+            {
+                "fallback": pull_request.html_url,
+                "title": pull_request.title,
+                "text": pull_request.html_url,
+                "color": '#' + '2BABE2',
+                "attachment_type": "default"
+            }
+        ]
+    };
+    
+    const params = {
+        text: message.text,
+        attachments: JSON.stringify(message.attachments),
+        parse: message.parse,
+        response_type: message.response_type,
+        token: process.env.BOT_TOKEN,
+        channel: process.env.CHANNEL
+    };
+
+    const query =  Object.keys(params)
+        .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+        .join('&');
+
+    const slack_message = await fetch('https://slack.com/api/chat.postMessage?' + query, {
+        method: 'POST'
+    }).then((res) => res.json())
+    const timestamp = get(slack_message, 'ts');
+    
+    savePullsMessages(branch, timestamp);
+
+    res.send({ branch, timestamp });
 }
