@@ -84,20 +84,18 @@ app.post('/pullrequest/', async function(req, res) {
         console.log('branch ', branch);
     }
 
-    if (action !== 'labeled') {
-        // res.send('Action is not labeled or there is no body');
-        // return;
-    }
-
     if (action == 'labeled') {
         processLabeled(body, res);
         return;
     }
 
-    if (action == 'review_requested') {
-        processReviewRequest(body, res);
+    if (action == 'review_requested' || action == 'review_request_removed' || action == 'unlabeled') {
+        updateOrPostMessage(body, res);
+        res.send(200);
         return;
     }
+
+    res.send('Action is not labeled or there is no body');
 });
 
 /**
@@ -133,19 +131,108 @@ function savePullsMessages (branch, timestamp) {
     return pgclient.query(text, values)
         .then(res => {
             console.log(res.rows[0])
+            return res.rows[0]
         })
         .catch(e => console.error(e.stack));
 }
 
+function getPullsMessages (branch) {    
+    const text = 'SELECT * from pulls_messages WHERE branch = $1 ORDER BY id DESC LIMIT 1';
+    const values = [branch];
+    
+    return pgclient.query(text, values)
+        .then(res => {
+            console.log(res.rows[0])
+            return res.rows[0]
+        })
+        .catch(e => console.error(e.stack));
+}
+
+function postMessage (method, query) {
+    const url = 'https://slack.com/api/chat.' + method + '?' + query;
+
+    return fetch(url, {
+        method: 'POST'
+    }).then((res) => res.json())
+}
+
+function getPreviousMessages (limit, timestamp) {
+    const params = {
+        limit: limit,
+        token: process.env.SLACK_TOKEN,
+        channel: process.env.CHANNEL,
+        inclusive: true
+    };
+
+    if (timestamp) {
+        params.latest = timestamp;
+    }
+
+    const query =  Object.keys(params)
+        .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+        .join('&');
+
+    const url = 'https://slack.com/api/conversations.history?' + query;
+
+    return fetch(url, {
+        method: 'GET'
+    }).then((res) => res.json())
+
+}
+
 async function processLabeled (body, res) {
+    await updateOrPostMessage(body, res);
+
     const pull_request = get(body, 'pull_request');
+    const repo = get(body, 'repository.name');
+    const branch = get(body, 'pull_request.head.ref');
     const label = get(body, 'label');
     const labelName = get(label, 'name');
+    const sender = get(body, 'sender.login');
+    const senderImage = get(body, 'sender.avatar_url');
 
-    // Parse repo out from URL
-    const repo = get(new RegExp("[^\/]+(?=\/pull\/)").exec(pull_request.html_url), '[0]');
+    if (!label || !label.name) {
+        res.send('No label');
+        return;
+    }
 
-    // Set slack notification tag based on repo
+    const pullsMessage = await getPullsMessages(branch);
+    const useChatUpdate = pullsMessage && pullsMessage.message_ts ? true : false
+
+    const params = {
+        parse: "full",
+        response_type: "in_channel",
+        token: process.env.SLACK_TOKEN,
+        channel: process.env.CHANNEL
+    };
+
+    if (!useChatUpdate) {
+        res.sendStatus(403);
+    }
+
+    params.thread_ts = pullsMessage && pullsMessage.message_ts;
+    params.text = 'Label added to *' + repo + '*: \n    ' + labelName;
+    params.username = sender;
+    params.icon_url = senderImage;
+
+    const threadQuery =  Object.keys(params)
+        .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+        .join('&');
+
+    const threadMessage = await postMessage('postMessage', threadQuery)
+
+    res.sendStatus(200);
+}
+
+async function updateOrPostMessage (body, res) {
+    const pull_request = get(body, 'pull_request');
+    const branch = get(body, 'pull_request.head.ref');
+    const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
+        return reviewer && reviewer.login
+    });
+    const repo = get(body, 'repository.name');
+    const mergeable = get(body, 'pull_request.mergeable');
+
     const pr_notify_tag = (function(repo) {
         switch(repo) {
             case 'chef':
@@ -155,107 +242,62 @@ async function processLabeled (body, res) {
         }
     })(repo);
 
-    if (!label || !label.name) {
-        res.send('No label');
-        return;
-    }
-
-    if (labelName.includes('Review: Ready')) {
-        const message = {
-            "parse": "full",
-            "text": pr_notify_tag + ' - Review requested from ' + pull_request.user.login,
-            "response_type": "in_channel",
-            "attachments": [
-                {
-                    "fallback": pull_request.html_url,
-                    "title": pull_request.title,
-                    "text": pull_request.html_url,
-                    "color": '#' + label.color,
-                    "attachment_type": "default",
-                    "callback_id": "action",
-                    "actions": [
-                        {
-                            "name": "actions",
-                            "text": "Choose a slack action",
-                            "type": "select",
-                            "options": [
-                                {
-                                    "text": "Assign To Me",
-                                    "value": "assign"
-                                },
-                                {
-                                    "text": "Requested Changes",
-                                    "value": "changes"
-                                },
-                                {
-                                    "text": "Approved",
-                                    "value": "approved"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        };
-
-        res.sendStatus(200);
-
-        const slack_message = await fetch(process.env.SLACK_TEST_WEBHOOK, {
-            method: 'POST',
-            body: JSON.stringify(message),
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        console.log(slack_message);
-    } else {
-        res.send('"' + label.name + '" is not supported');
-        return;
-    }
-}
-
-async function processReviewRequest (body, res) {
-    const pull_request = get(body, 'pull_request');
-    const branch = get(body, 'pull_request.head.ref');
-    const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
-        return reviewer && reviewer.login
+    const labels = get(body, 'pull_request.labels');
+    const attachments = labels.map(function (label) {
+        return {
+            title: label.name,
+            color: label.color
+        }
     });
+
+    const pullsMessage = await getPullsMessages(branch);
+    const timestamp = pullsMessage && pullsMessage.message_ts;
+    const matchingMessageResponse = await getPreviousMessages(1, timestamp)
+
+    const messageExists = matchingMessageResponse.messages ? (
+            matchingMessageResponse.messages
+                .filter(message => message.ts === timestamp && message.subtype != 'tombstone')
+                .length > 0
+        ) : false
+
+    const method = messageExists ? 'update' : 'postMessage';
     
     const message = {
         "parse": "full",
-        "text": pull_request.user.login + ' is requesting a review from:' + '\n' +
-            '    ' + reviewers.join(',') + '\n' +
-            'On branch: `' + branch + '`',
+        "text": pr_notify_tag + ' - ' + pull_request.user.login + ' is requesting a review from:' + '\n' +
+            '    ' + reviewers.join(', ') + '\n' +
+            'On branch: `' + branch + '`' + '\n' +
+            '\n' +
+            '> *' + pull_request.title + '*' + '\n' + 
+            '> ' + pull_request.html_url,
         "response_type": "in_channel",
-        "attachments": [
-            {
-                "fallback": pull_request.html_url,
-                "title": pull_request.title,
-                "text": pull_request.html_url,
-                "color": '#' + '2BABE2',
-                "attachment_type": "default"
-            }
-        ]
+        "attachments": attachments
     };
     
     const params = {
-        text: message.text,
-        attachments: JSON.stringify(message.attachments),
         parse: message.parse,
         response_type: message.response_type,
         token: process.env.BOT_TOKEN,
         channel: process.env.CHANNEL
     };
 
+    if (messageExists) {
+        params.ts = timestamp;
+    }
+    
+    params.text = message.text;
+    params.attachments = JSON.stringify(message.attachments);
+
     const query =  Object.keys(params)
         .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
         .join('&');
 
-    const slack_message = await fetch('https://slack.com/api/chat.postMessage?' + query, {
-        method: 'POST'
-    }).then((res) => res.json())
-    const timestamp = get(slack_message, 'ts');
+    const slack_message = await postMessage(method, query);
+    const new_timestamp = get(slack_message, 'ts');
     
-    savePullsMessages(branch, timestamp);
+    if (!messageExists) {
+        savePullsMessages(branch, new_timestamp);
+    }
 
-    res.send({ branch, timestamp });
+    return slack_message;
 }
