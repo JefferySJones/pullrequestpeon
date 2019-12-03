@@ -89,7 +89,13 @@ app.post('/pullrequest/', async function(req, res) {
         return;
     }
 
-    if (action == 'review_requested' || action == 'review_request_removed' || action == 'unlabeled') {
+    const actionToUpdate = [
+        // 'review_requested',
+        // 'review_request_removed',
+        'unlabeled'
+    ]
+
+    if (actionToUpdate.indexOf(action) >= 0) {
         updateOrPostMessage(body, res);
         res.send(200);
         return;
@@ -232,6 +238,7 @@ async function updateOrPostMessage (body, res) {
     });
     const repo = get(body, 'repository.name');
     const mergeable = get(body, 'pull_request.mergeable');
+    const pull_requestImage = get(body, 'pull_request.user.avatar_url');
 
     const pr_notify_tag = (function(repo) {
         switch(repo) {
@@ -277,8 +284,9 @@ async function updateOrPostMessage (body, res) {
     const params = {
         parse: message.parse,
         response_type: message.response_type,
-        token: process.env.BOT_TOKEN,
-        channel: process.env.CHANNEL
+        token: process.env.SLACK_TOKEN,
+        channel: process.env.CHANNEL,
+        icon_url: pull_requestImage
     };
 
     if (messageExists) {
