@@ -261,15 +261,6 @@ async function updateOrPostMessage (body, res) {
         }
     });
 
-    attachments.actions = [	
-        {
-            "name": "game",
-            "text": "Chess",
-            "type": "button",
-            "value": "chess"
-        },
-    ];
-
     const pullsMessage = await getPullsMessages(branch);
     const timestamp = pullsMessage && pullsMessage.message_ts;
     const matchingMessageResponse = await getPreviousMessages(1, timestamp)
