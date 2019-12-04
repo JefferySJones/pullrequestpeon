@@ -253,13 +253,22 @@ async function updateOrPostMessage (body, res) {
     const attachments = labels.map(function (label) {
         return {
             title: String(label.name)
-                .replace(/0 - In Development/, ":warning:  In Development")
-                .replace(/1 - Review: Ready/, ":large_blue_circle:  Ready for Review")
-                .replace(/2 - Review: In Progress/, ":lendio_spinner:  Review in Progress")
-                .replace(/3 - Review: Done/, ":done:  Review Done "),
+                .replace(/0 - In Development/, ":git-warning:  In Development")
+                .replace(/1 - Review: Ready/, ":git-review:  Ready for Review")
+                .replace(/2 - Review: In Progress/, ":git-looking:  Review in Progress")
+                .replace(/3 - Review: Done/, ":git-approved:  Review Done "),
             color: label.color
         }
     });
+
+    attachments.actions = [	
+        {
+            "name": "game",
+            "text": "Chess",
+            "type": "button",
+            "value": "chess"
+        },
+    ];
 
     const pullsMessage = await getPullsMessages(branch);
     const timestamp = pullsMessage && pullsMessage.message_ts;
