@@ -252,7 +252,11 @@ async function updateOrPostMessage (body, res) {
     const labels = get(body, 'pull_request.labels');
     const attachments = labels.map(function (label) {
         return {
-            title: label.name,
+            title: String(label.name)
+                .replace(/0 - In Development/, ":warning: In Development")
+                .replace(/1 - Review: Ready/, ":large_blue_circle: Ready for Review")
+                .replace(/2 - Review: In Progress/, ":lendio_spinner: Review in Progress")
+                .replace(/3 - Review: Done/, ":done: Review Done "),
             color: label.color
         }
     });
