@@ -254,9 +254,9 @@ async function updateOrPostMessage (body, res) {
         return {
             title: String(label.name)
                 .replace(/0 - In Development/, ":git-warning:  In Development")
-                .replace(/1 - Review: Ready/, ":git-review:  Ready for Review")
+                .replace(/1 - Review: Ready/, ":git-review:  Awaiting Review")
                 .replace(/2 - Review: In Progress/, ":git-looking:  Review in Progress")
-                .replace(/3 - Review: Done/, ":git-approved:  Review Done "),
+                .replace(/3 - Review: Done/, ":git-approved:  Approved"),
             color: label.color
         }
     });
