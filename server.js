@@ -244,6 +244,8 @@ async function updateOrPostMessage (body, res) {
         switch(repo) {
             case 'chef':
                 return '@devops';
+            case 'salt':
+                return '@devops';
             default:
                 return '@prps';
         }
