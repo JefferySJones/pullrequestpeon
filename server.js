@@ -193,7 +193,7 @@ async function processLabeled (body, res) {
 
     const pull_request = get(body, 'pull_request');
     const repo = get(body, 'repository.name');
-    const owner = get(body, 'repository.owner');
+    const owner = get(body, 'repository.owner.login');
     const branch = get(body, 'pull_request.head.ref');
     const label = get(body, 'label');
     const labelName = get(label, 'name');
