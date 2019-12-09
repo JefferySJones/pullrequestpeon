@@ -90,8 +90,10 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     const actionToUpdate = [
-        // 'review_requested',
-        // 'review_request_removed',
+        'review_requested',
+        'review_request_removed',
+        'unassigned',
+        'assigned',
         'unlabeled'
     ]
 
@@ -236,6 +238,9 @@ async function updateOrPostMessage (body, res) {
     const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
         return reviewer && reviewer.login
     });
+    const assignees = get(body, 'pull_request.assignees').map(function (assignee) {
+        return assignee && assignee.login
+    }).join(', ');
     const repo = get(body, 'repository.name');
     const mergeable = get(body, 'pull_request.mergeable');
     const pull_requestImage = get(body, 'pull_request.user.avatar_url');
@@ -280,10 +285,12 @@ async function updateOrPostMessage (body, res) {
 
     const method = messageExists ? 'update' : 'postMessage';
     
+    let assigneesSection = assignees ? '> Assigned To: ' + assignees + '\n' : ''
     const message = {
         "parse": "full",
         "text": pr_notify_tag + ' - ' + pull_request.user.login + ' is requesting a review from:' + '\n' +
             '    ' + reviewers.join(', ') + '\n' +
+            assigneesSection + 
             'On branch: `' + branch + '`' + '\n' +
             '\n' +
             '> *' + pull_request.title + '*' + '\n' + 
