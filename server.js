@@ -193,6 +193,7 @@ async function processLabeled (body, res) {
 
     const pull_request = get(body, 'pull_request');
     const repo = get(body, 'repository.name');
+    const owner = get(body, 'repository.owner');
     const branch = get(body, 'pull_request.head.ref');
     const label = get(body, 'label');
     const labelName = get(label, 'name');
@@ -221,12 +222,12 @@ async function processLabeled (body, res) {
     params.thread_ts = pullsMessage && pullsMessage.message_ts;
     params.text = 'Label added to *' + repo + '*: \n    ' + labelName;
 
-    if (labelName.includes('Review: Ready')) {
-        params.text = 'https://github.com/pulls?utf8=%E2%9C%93&q=is%3Apr+user%3A' 
-            + repo + '+is%3Aopen+head%3A' 
+    if (labelName.includes('Review: Ready')) {        
+        params.text = 'https://github.com/pulls?utf8=%E2%9C%93&q=is%3Apr%3A' 
+            + owner + '+is%3Aopen+head%3A' 
             + branch + '\n\n' + params.text
     }
-    
+
     params.username = sender;
     params.icon_url = senderImage;
 
