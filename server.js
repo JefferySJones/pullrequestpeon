@@ -252,6 +252,7 @@ async function updateOrPostMessage (body, res) {
     })(repo);
 
     const labels = get(body, 'pull_request.labels');
+    const hasReviewReadyLabel = !!labels.find(label => String(label.name).includes('Review: Ready'))
     const attachments = labels.map(function (label) {
         return {
             title: String(label.name)
@@ -272,6 +273,10 @@ async function updateOrPostMessage (body, res) {
                 .filter(message => message.ts === timestamp && message.subtype != 'tombstone')
                 .length > 0
         ) : false
+
+    if (!messageExists && !hasReviewReadyLabel) {
+        return 'No message posted';
+    }
 
     const method = messageExists ? 'update' : 'postMessage';
     
