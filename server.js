@@ -237,7 +237,7 @@ async function updateOrPostMessage (body, res) {
     const branch = get(body, 'pull_request.head.ref');
     const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
         return reviewer && reviewer.login
-    });
+    }).join(', ');
     const assignees = get(body, 'pull_request.assignees').map(function (assignee) {
         return assignee && assignee.login
     }).join(', ');
@@ -286,10 +286,13 @@ async function updateOrPostMessage (body, res) {
     const method = messageExists ? 'update' : 'postMessage';
     
     let assigneesSection = assignees ? '> Assigned To: ' + assignees + '\n' : ''
+    let requestedReviewersSection = reviewers ? 
+        ' - ' + pull_request.user.login + ' is requesting a review from:' + 
+            '\n' + '    ' + reviewers + '\n' 
+        : ''
     const message = {
         "parse": "full",
-        "text": pr_notify_tag + ' - ' + pull_request.user.login + ' is requesting a review from:' + '\n' +
-            '    ' + reviewers.join(', ') + '\n' +
+        "text": pr_notify_tag  + requestedReviewersSection +
             assigneesSection + 
             'On branch: `' + branch + '`' + '\n' +
             '\n' +
