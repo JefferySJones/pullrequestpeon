@@ -220,6 +220,13 @@ async function processLabeled (body, res) {
 
     params.thread_ts = pullsMessage && pullsMessage.message_ts;
     params.text = 'Label added to *' + repo + '*: \n    ' + labelName;
+
+    if (labelName.includes('Review: Ready')) {
+        params.text = 'https://github.com/pulls?utf8=%E2%9C%93&q=is%3Apr+user%3A' 
+            + repo + '+is%3Aopen+head%3A' 
+            + branch + '\n\n' + params.text
+    }
+    
     params.username = sender;
     params.icon_url = senderImage;
 
