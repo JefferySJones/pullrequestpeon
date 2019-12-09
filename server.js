@@ -285,11 +285,11 @@ async function updateOrPostMessage (body, res) {
 
     const method = messageExists ? 'update' : 'postMessage';
     
-    let assigneesSection = assignees ? '\n> Assigned To: ' + assignees + '\n' : ''
+    let assigneesSection = assignees ? '> Assigned To: ' + assignees + '\n' : ''
     let requestedReviewersSection = reviewers ? 
         ' - ' + pull_request.user.login + ' is requesting a review from:' + 
             '\n' + '    ' + reviewers + '\n' 
-        : ''
+        : '\n'
     const message = {
         "parse": "full",
         "text": pr_notify_tag  + requestedReviewersSection +
