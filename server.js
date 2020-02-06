@@ -200,8 +200,13 @@ async function processLabeled (body, res) {
     const sender = get(body, 'sender.login');
     const senderImage = get(body, 'sender.avatar_url');
 
-    if (!label || !label.name) {
+    if (!label || !labelName) {
         res.send('No label');
+        return;
+    }
+
+    if (labelName.indexOf('Skip PRP Channel') > -1) {
+        res.send('Skip PRP Channel');
         return;
     }
 
@@ -265,7 +270,8 @@ async function updateOrPostMessage (body, res) {
     })(repo);
 
     const labels = get(body, 'pull_request.labels');
-    const hasReviewReadyLabel = !!labels.find(label => String(label.name).includes('Review: Ready'))
+    const hasReviewReadyLabel = !!labels.find(label => String(label.name).includes('Review: Ready'));
+    const hasSkipReviewLabel = !!labels.find(label => String(label.name).includes('Skip PRP Channel'));
     const attachments = labels.map(function (label) {
         return {
             title: String(label.name)
@@ -279,15 +285,15 @@ async function updateOrPostMessage (body, res) {
 
     const pullsMessage = await getPullsMessages(branch);
     const timestamp = pullsMessage && pullsMessage.message_ts;
-    const matchingMessageResponse = await getPreviousMessages(1, timestamp)
+    const matchingMessageResponse = await getPreviousMessages(1, timestamp);
 
     const messageExists = matchingMessageResponse.messages ? (
             matchingMessageResponse.messages
                 .filter(message => message.ts === timestamp && message.subtype != 'tombstone')
                 .length > 0
-        ) : false
+        ) : false;
 
-    if (!messageExists && !hasReviewReadyLabel) {
+    if (!messageExists && !hasReviewReadyLabel || hasSkipReviewLabel) {
         return 'No message posted';
     }
 
