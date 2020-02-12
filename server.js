@@ -257,6 +257,7 @@ async function updateOrPostMessage (body, res) {
     const repo = get(body, 'repository.name');
     const mergeable = get(body, 'pull_request.mergeable');
     const pull_requestImage = get(body, 'pull_request.user.avatar_url');
+    const action = get(body, 'action');
 
     const pr_notify_tag = (function(repo) {
         switch(repo) {
@@ -292,6 +293,11 @@ async function updateOrPostMessage (body, res) {
                 .filter(message => message.ts === timestamp && message.subtype != 'tombstone')
                 .length > 0
         ) : false;
+
+    // Unlabeled should not create a new message when has ready review label exists...
+    if (!messageExists && hasReviewReadyLabel && action === 'unlabeled') {
+        return 'No message posted, '
+    }
 
     if (!messageExists && !hasReviewReadyLabel || hasSkipReviewLabel) {
         return 'No message posted';
