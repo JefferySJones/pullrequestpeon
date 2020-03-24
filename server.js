@@ -295,7 +295,7 @@ async function updateOrPostMessage (body, res) {
         ) : false;
 
     // Unlabeled should not create a new message when has ready review label exists...
-    if (!messageExists && hasReviewReadyLabel && action === 'unlabeled') {
+    if (!messageExists && hasReviewReadyLabel && action !== 'labeled') {
         return 'No message posted, '
     }
 
