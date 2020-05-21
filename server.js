@@ -119,7 +119,7 @@ app.post('/pullrequest/', async function(req, res) {
     res.send('Action is not labeled, or closed, or there is no body');
 });
 
-function postClosed (body, res) {
+async function postClosed (body, res) {
     const method = 'postMessage';
 
     const merged_by = get(body, 'pull_request.merged_by.login');
