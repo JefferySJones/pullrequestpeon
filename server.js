@@ -120,8 +120,6 @@ app.post('/pullrequest/', async function(req, res) {
 });
 
 function postClosed (body, res) {
-    const body = get(res, 'body');
-    
     const method = 'postMessage';
 
     const merged_by = get(body, 'pull_request.merged_by.login');
