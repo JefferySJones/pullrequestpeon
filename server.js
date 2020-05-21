@@ -86,6 +86,10 @@ app.post('/pullrequest/', async function(req, res) {
 
     if (action == 'closed') {
         const merged = get(body, 'pull_request.merged');
+        const base = get(body, 'pull_request.base.ref');
+        if (base != 'master') {
+            return;
+        }
         if (merged == true || merged == "true") {
             postClosed(body, res);
             return;
