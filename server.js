@@ -88,7 +88,8 @@ app.post('/pullrequest/', async function(req, res) {
         const merged = get(body, 'pull_request.merged');
         const base = get(body, 'pull_request.base.ref');
         if (base != 'master') {
-            return;
+            res.sendStatus(200);
+            return; 
         }
         if (merged == true || merged == "true") {
             postClosed(body, res);
@@ -119,8 +120,7 @@ app.post('/pullrequest/', async function(req, res) {
 });
 
 function postClosed (body, res) {
-    const body = get(req, 'body');
-    const action = get(body, 'action');
+    const body = get(res, 'body');
     
     const method = 'postMessage';
 
@@ -144,7 +144,6 @@ function postClosed (body, res) {
     };
     
     params.text = message.text;
-    params.attachments = JSON.stringify(message.attachments);
 
     const query =  Object.keys(params)
         .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
