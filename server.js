@@ -84,6 +84,14 @@ app.post('/pullrequest/', async function(req, res) {
         console.log('branch ', branch);
     }
 
+    if (action == 'closed') {
+        const merged = get(body, 'pull_request.merged');
+        if (merged == true || merged == "true") {
+            postClosed(body, res);
+            return;
+        }
+    }
+
     if (action == 'labeled') {
         processLabeled(body, res);
         return;
@@ -103,8 +111,44 @@ app.post('/pullrequest/', async function(req, res) {
         return;
     }
 
-    res.send('Action is not labeled or there is no body');
+    res.send('Action is not labeled, or closed, or there is no body');
 });
+
+function postClosed (body, res) {
+    const body = get(req, 'body');
+    const action = get(body, 'action');
+    
+    const method = 'postMessage';
+
+    const merged_by = get(body, 'pull_request.merged_by.login');
+    const merged_by_avatar = get(body, 'pull_request.merged_by.avatar_url');
+    const repo = get(body, 'repository.name');
+    
+
+    const message = {
+        "parse": "full",
+        "text": `${merged_by} is deploying ${repo}`,
+        "response_type": "in_channel"
+    };
+    
+    const params = {
+        parse: message.parse,
+        response_type: message.response_type,
+        token: process.env.SLACK_TOKEN,
+        channel: process.env.CLOSED_CHANNEL,
+        icon_url: merged_by_avatar
+    };
+    
+    params.text = message.text;
+    params.attachments = JSON.stringify(message.attachments);
+
+    const query =  Object.keys(params)
+        .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+        .join('&');
+
+    const slack_message = await postMessage(method, query);
+    res.sendStatus(200);
+}
 
 /**
  * Methods
