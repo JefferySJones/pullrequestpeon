@@ -206,7 +206,13 @@ function postMessage (method, query) {
 
     return fetch(url, {
         method: 'POST'
-    }).then((res) => res.json())
+    }).then(
+        (res) => { 
+            console.log('responseq', query)
+            console.log('response', method, res)
+            return res.json() 
+        }
+    )
 }
 
 function getPreviousMessages (limit, timestamp) {
