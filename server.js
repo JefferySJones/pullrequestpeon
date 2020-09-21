@@ -32,7 +32,7 @@ app.use(express.urlencoded({extended: true}));
  * GET Routes
  */
 app.get('/', function(req, res) {
-    res.sendStatus('Healthy Peon');
+    res.send('Healthy');
 });
 
 /**
@@ -68,7 +68,7 @@ app.post('/action/', async function(req, res) {
             newMessage = modifyMessage(originalMessage, ['approved', 'assign', 'changes'], '\n :exclamation: - Changes requested by ' + parsed.user.name);
         }
 
-        res.sendStatus(newMessage);
+        res.send(newMessage);
     } else {
         res.sendStatus(403);
     }
@@ -112,11 +112,11 @@ app.post('/pullrequest/', async function(req, res) {
 
     if (actionToUpdate.indexOf(action) >= 0) {
         updateOrPostMessage(body, res);
-        res.sendStatus(200);
+        res.send(200);
         return;
     }
 
-    res.sendStatus('Action is not labeled, or closed, or there is no body');
+    res.send('Action is not labeled, or closed, or there is no body');
 });
 
 async function postClosed (body, res) {
@@ -246,12 +246,12 @@ async function processLabeled (body, res) {
     const senderImage = get(body, 'sender.avatar_url');
 
     if (!label || !labelName) {
-        res.sendStatus('No label');
+        res.send('No label');
         return;
     }
 
     if (labelName.indexOf('Skip PRP Channel') > -1) {
-        res.sendStatus('Skip PRP Channel');
+        res.send('Skip PRP Channel');
         return;
     }
 
@@ -387,7 +387,6 @@ async function updateOrPostMessage (body, res) {
         .join('&');
 
     const slack_message = await postMessage(method, query);
-    console.log('slack message', slack_message);
     const new_timestamp = get(slack_message, 'ts');
     
     if (!messageExists) {
