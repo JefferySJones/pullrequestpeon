@@ -206,10 +206,7 @@ function postMessage (method, query) {
 
     return fetch(url, {
         method: 'POST'
-    }).then((res) => {
-        console.log('postmessage response ', res)
-        res.json()
-    })
+    }).then((res) => res.json())
 }
 
 function getPreviousMessages (limit, timestamp) {
@@ -390,6 +387,7 @@ async function updateOrPostMessage (body, res) {
         .join('&');
 
     const slack_message = await postMessage(method, query);
+    console.log('slack message', slack_message);
     const new_timestamp = get(slack_message, 'ts');
     
     if (!messageExists) {
