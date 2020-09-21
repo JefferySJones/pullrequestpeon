@@ -353,7 +353,7 @@ async function updateOrPostMessage (body, res) {
         return 'No message posted, '
     }
 
-    if (!messageExists && !hasReviewReadyLabel || hasSkipReviewLabel) {
+    if ((!messageExists && !hasReviewReadyLabel) || hasSkipReviewLabel) {
         console.log('No Message Posted 2.');
         return 'No message posted';
     }
