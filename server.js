@@ -98,6 +98,7 @@ app.post('/pullrequest/', async function(req, res) {
     }
 
     if (action == 'labeled') {
+        console.log('Label Added!');
         processLabeled(body, res);
         return;
     }
@@ -111,6 +112,7 @@ app.post('/pullrequest/', async function(req, res) {
     ]
 
     if (actionToUpdate.indexOf(action) >= 0) {
+        console.log('Action: ', action);
         updateOrPostMessage(body, res);
         res.send(200);
         return;
@@ -347,10 +349,12 @@ async function updateOrPostMessage (body, res) {
 
     // Unlabeled should not create a new message when has ready review label exists...
     if (!messageExists && hasReviewReadyLabel && action !== 'labeled') {
+        console.log('No Message Posted.');
         return 'No message posted, '
     }
 
     if (!messageExists && !hasReviewReadyLabel || hasSkipReviewLabel) {
+        console.log('No Message Posted 2.');
         return 'No message posted';
     }
 
@@ -392,6 +396,7 @@ async function updateOrPostMessage (body, res) {
         .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
         .join('&');
 
+    console.log('Posting message to slack');
     const slack_message = await postMessage(method, query);
     const new_timestamp = get(slack_message, 'ts');
     
