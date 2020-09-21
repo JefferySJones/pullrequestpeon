@@ -32,7 +32,7 @@ app.use(express.urlencoded({extended: true}));
  * GET Routes
  */
 app.get('/', function(req, res) {
-    res.send('Healthy');
+    res.sendStatus('Healthy Peon');
 });
 
 /**
@@ -68,7 +68,7 @@ app.post('/action/', async function(req, res) {
             newMessage = modifyMessage(originalMessage, ['approved', 'assign', 'changes'], '\n :exclamation: - Changes requested by ' + parsed.user.name);
         }
 
-        res.send(newMessage);
+        res.sendStatus(newMessage);
     } else {
         res.sendStatus(403);
     }
@@ -112,11 +112,11 @@ app.post('/pullrequest/', async function(req, res) {
 
     if (actionToUpdate.indexOf(action) >= 0) {
         updateOrPostMessage(body, res);
-        res.send(200);
+        res.sendStatus(200);
         return;
     }
 
-    res.send('Action is not labeled, or closed, or there is no body');
+    res.sendStatus('Action is not labeled, or closed, or there is no body');
 });
 
 async function postClosed (body, res) {
@@ -246,12 +246,12 @@ async function processLabeled (body, res) {
     const senderImage = get(body, 'sender.avatar_url');
 
     if (!label || !labelName) {
-        res.send('No label');
+        res.sendStatus('No label');
         return;
     }
 
     if (labelName.indexOf('Skip PRP Channel') > -1) {
-        res.send('Skip PRP Channel');
+        res.sendStatus('Skip PRP Channel');
         return;
     }
 
