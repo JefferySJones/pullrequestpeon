@@ -203,6 +203,30 @@ function getPullsMessages (branch) {
         .catch(e => console.error(e.stack));
 }
 
+function getSlackHandle (githubHandle) {
+    const text = 'SELECT * FROM users WHERE github_handle = $1';
+    const values = [githubHandle];
+
+    return pgclient.query(text, values)
+        .then(res => {
+            console.log(res.rows[0])
+            return res.rows[0] && res.rows[0].slack_handle
+        })
+        .catch(e => console.error(e.stack));
+}
+
+function getSlackName (githubHandle) {
+    const text = 'SELECT * FROM users WHERE github_handle = $1';
+    const values = [githubHandle];
+
+    return pgclient.query(text, values)
+        .then(res => {
+            console.log(res.rows[0])
+            return res.rows[0] && res.rows[0].slack_name
+        })
+        .catch(e => console.error(e.stack));
+}
+
 function postMessage (method, query) {
     const url = 'https://slack.com/api/chat.' + method + '?' + query;
 
@@ -264,6 +288,7 @@ async function processLabeled (body, res) {
     }
 
     const pullsMessage = await getPullsMessages(branch);
+    const ownerSlackName = await getSlackName(owner);
     const useChatUpdate = pullsMessage && pullsMessage.message_ts ? true : false
 
     const params = {
@@ -286,7 +311,7 @@ async function processLabeled (body, res) {
             + branch + '\n\n' + params.text
     }
 
-    params.username = sender;
+    params.username = ownerSlackName ? ownerSlackName : sender;
     params.icon_url = senderImage;
 
     const threadQuery =  Object.keys(params)
@@ -302,7 +327,8 @@ async function updateOrPostMessage (body, res) {
     const pull_request = get(body, 'pull_request');
     const branch = get(body, 'pull_request.head.ref');
     const reviewers = get(body, 'pull_request.requested_reviewers').map(function (reviewer) {
-        return reviewer && reviewer.login
+        const reviewerHandle = await getSlackHandle(reviewer && reviewer.login);
+        return reviewerHandle ? '@' + reviewerHandle : reviewer && reviewer.login
     }).join(', ');
     const assignees = get(body, 'pull_request.assignees').map(function (assignee) {
         return assignee && assignee.login
@@ -361,8 +387,12 @@ async function updateOrPostMessage (body, res) {
     const method = messageExists ? 'update' : 'postMessage';
     
     let assigneesSection = assignees ? '> Assigned to: ' + assignees + '\n' : ''
+
+    const userSlackHandle = await getSlackHandle(pull_request.user.login);
+    const userLogin = userSlackHandle ? '@' + userSlackHandle : pull_request.user.login;
+
     let requestedReviewersSection = reviewers ? 
-        ' - ' + pull_request.user.login + ' is requesting a review from:' + 
+        ' - ' + userLogin + ' is requesting a review from:' + 
             '\n' + '    ' + reviewers + '\n' 
         : '\n'
     const message = {
